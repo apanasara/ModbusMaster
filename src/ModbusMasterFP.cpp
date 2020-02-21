@@ -27,8 +27,7 @@ Arduino library for communicating with Modbus slaves over RS232/485 (via RTU pro
 
 
 /* _____PROJECT INCLUDES_____________________________________________________ */
-#include "ModbusMaster.h"
-
+#include "ModbusMasterFP.h"
 
 /* _____GLOBAL VARIABLES_____________________________________________________ */
 
@@ -37,15 +36,15 @@ Arduino library for communicating with Modbus slaves over RS232/485 (via RTU pro
 /**
 Constructor.
 
-Creates class object; initialize it using ModbusMaster::begin().
+Creates class object; initialize it using ModbusMasterFP::begin().
 
 @ingroup setup
 */
-ModbusMaster::ModbusMaster(void)
+ModbusMasterFP::ModbusMasterFP(void)
 {
-  _idle = 0;
-  _preTransmission = 0;
-  _postTransmission = 0;
+  idle.detach();
+  preTransmission.detach();
+  postTransmission.detach();
 }
 
 /**
@@ -58,7 +57,7 @@ Call once class has been instantiated, typically within setup().
 @param &serial reference to serial port object (Serial, Serial1, ... Serial3)
 @ingroup setup
 */
-void ModbusMaster::begin(uint8_t slave, Stream &serial)
+void ModbusMasterFP::begin(uint8_t slave, Stream &serial)
 {
 //  txBuffer = (uint16_t*) calloc(ku8MaxBufferSize, sizeof(uint16_t));
   _u8MBSlave = slave;
@@ -73,7 +72,7 @@ void ModbusMaster::begin(uint8_t slave, Stream &serial)
 }
 
 
-void ModbusMaster::beginTransmission(uint16_t u16Address)
+void ModbusMasterFP::beginTransmission(uint16_t u16Address)
 {
   _u16WriteAddress = u16Address;
   _u8TransmitBufferIndex = 0;
@@ -81,7 +80,7 @@ void ModbusMaster::beginTransmission(uint16_t u16Address)
 }
 
 // eliminate this function in favor of using existing MB request functions
-uint8_t ModbusMaster::requestFrom(uint16_t address, uint16_t quantity)
+uint8_t ModbusMasterFP::requestFrom(uint16_t address, uint16_t quantity)
 {
   uint8_t read;
   // clamp to buffer length
@@ -97,7 +96,7 @@ uint8_t ModbusMaster::requestFrom(uint16_t address, uint16_t quantity)
 }
 
 
-void ModbusMaster::sendBit(bool data)
+void ModbusMasterFP::sendBit(bool data)
 {
   uint8_t txBitIndex = u16TransmitBufferLength % 16;
   if ((u16TransmitBufferLength >> 4) < ku8MaxBufferSize)
@@ -113,7 +112,7 @@ void ModbusMaster::sendBit(bool data)
 }
 
 
-void ModbusMaster::send(uint16_t data)
+void ModbusMasterFP::send(uint16_t data)
 {
   if (_u8TransmitBufferIndex < ku8MaxBufferSize)
   {
@@ -123,14 +122,14 @@ void ModbusMaster::send(uint16_t data)
 }
 
 
-void ModbusMaster::send(uint32_t data)
+void ModbusMasterFP::send(uint32_t data)
 {
   send(lowWord(data));
   send(highWord(data));
 }
 
 
-void ModbusMaster::send(uint8_t data)
+void ModbusMasterFP::send(uint8_t data)
 {
   send(word(data));
 }
@@ -143,13 +142,13 @@ void ModbusMaster::send(uint8_t data)
 
 
 
-uint8_t ModbusMaster::available(void)
+uint8_t ModbusMasterFP::available(void)
 {
   return _u8ResponseBufferLength - _u8ResponseBufferIndex;
 }
 
 
-uint16_t ModbusMaster::receive(void)
+uint16_t ModbusMasterFP::receive(void)
 {
   if (_u8ResponseBufferIndex < _u8ResponseBufferLength)
   {
@@ -176,12 +175,12 @@ and response from slave. Do not call functions that read from the serial
 buffer that is used by ModbusMaster. Use of i2c/TWI, 1-Wire, other
 serial ports, etc. is permitted within callback function.
 
-@see ModbusMaster::ModbusMasterTransaction()
+@see ModbusMasterFP::ModbusMasterTransaction()
 */
-void ModbusMaster::idle(void (*idle)())
+/*void ModbusMasterFP::idle(function f)
 {
-  _idle = idle;
-}
+  _idle.attach(f);
+}*/
 
 /**
 Set pre-transmission callback function.
@@ -190,13 +189,14 @@ This function gets called just before a Modbus message is sent over serial.
 Typical usage of this callback is to enable an RS485 transceiver's
 Driver Enable pin, and optionally disable its Receiver Enable pin.
 
-@see ModbusMaster::ModbusMasterTransaction()
-@see ModbusMaster::postTransmission()
+@see ModbusMasterFP::ModbusMasterTransaction()
+@see ModbusMasterFP::postTransmission()
 */
-void ModbusMaster::preTransmission(void (*preTransmission)())
+
+/*void ModbusMasterFP::preTransmission(function f)
 {
-  _preTransmission = preTransmission;
-}
+  _preTransmission.attach(f);
+}*/
 
 /**
 Set post-transmission callback function.
@@ -208,24 +208,24 @@ bus).
 Typical usage of this callback is to enable an RS485 transceiver's
 Receiver Enable pin, and disable its Driver Enable pin.
 
-@see ModbusMaster::ModbusMasterTransaction()
-@see ModbusMaster::preTransmission()
+@see ModbusMasterFP::ModbusMasterTransaction()
+@see ModbusMasterFP::preTransmission()
 */
-void ModbusMaster::postTransmission(void (*postTransmission)())
+/*void ModbusMasterFP::postTransmission(function f)
 {
-  _postTransmission = postTransmission;
-}
+  _postTransmission.attach(f);
+}*/
 
 
 /**
 Retrieve data from response buffer.
 
-@see ModbusMaster::clearResponseBuffer()
+@see ModbusMasterFP::clearResponseBuffer()
 @param u8Index index of response buffer array (0x00..0x3F)
 @return value in position u8Index of response buffer (0x0000..0xFFFF)
 @ingroup buffer
 */
-uint16_t ModbusMaster::getResponseBuffer(uint8_t u8Index)
+uint16_t ModbusMasterFP::getResponseBuffer(uint8_t u8Index)
 {
   if (u8Index < ku8MaxBufferSize)
   {
@@ -241,10 +241,10 @@ uint16_t ModbusMaster::getResponseBuffer(uint8_t u8Index)
 /**
 Clear Modbus response buffer.
 
-@see ModbusMaster::getResponseBuffer(uint8_t u8Index)
+@see ModbusMasterFP::getResponseBuffer(uint8_t u8Index)
 @ingroup buffer
 */
-void ModbusMaster::clearResponseBuffer()
+void ModbusMasterFP::clearResponseBuffer()
 {
   uint8_t i;
   
@@ -258,13 +258,13 @@ void ModbusMaster::clearResponseBuffer()
 /**
 Place data in transmit buffer.
 
-@see ModbusMaster::clearTransmitBuffer()
+@see ModbusMasterFP::clearTransmitBuffer()
 @param u8Index index of transmit buffer array (0x00..0x3F)
 @param u16Value value to place in position u8Index of transmit buffer (0x0000..0xFFFF)
 @return 0 on success; exception number on failure
 @ingroup buffer
 */
-uint8_t ModbusMaster::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
+uint8_t ModbusMasterFP::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
 {
   if (u8Index < ku8MaxBufferSize)
   {
@@ -281,10 +281,10 @@ uint8_t ModbusMaster::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
 /**
 Clear Modbus transmit buffer.
 
-@see ModbusMaster::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
+@see ModbusMasterFP::setTransmitBuffer(uint8_t u8Index, uint16_t u16Value)
 @ingroup buffer
 */
-void ModbusMaster::clearTransmitBuffer()
+void ModbusMasterFP::clearTransmitBuffer()
 {
   uint8_t i;
   
@@ -318,7 +318,7 @@ order end of the word).
 @return 0 on success; exception number on failure
 @ingroup discrete
 */
-uint8_t ModbusMaster::readCoils(uint16_t u16ReadAddress, uint16_t u16BitQty)
+uint8_t ModbusMasterFP::readCoils(uint16_t u16ReadAddress, uint16_t u16BitQty)
 {
   _u16ReadAddress = u16ReadAddress;
   _u16ReadQty = u16BitQty;
@@ -349,7 +349,7 @@ order end of the word).
 @return 0 on success; exception number on failure
 @ingroup discrete
 */
-uint8_t ModbusMaster::readDiscreteInputs(uint16_t u16ReadAddress,
+uint8_t ModbusMasterFP::readDiscreteInputs(uint16_t u16ReadAddress,
   uint16_t u16BitQty)
 {
   _u16ReadAddress = u16ReadAddress;
@@ -374,7 +374,7 @@ register.
 @return 0 on success; exception number on failure
 @ingroup register
 */
-uint8_t ModbusMaster::readHoldingRegisters(uint16_t u16ReadAddress,
+uint8_t ModbusMasterFP::readHoldingRegisters(uint16_t u16ReadAddress,
   uint16_t u16ReadQty)
 {
   _u16ReadAddress = u16ReadAddress;
@@ -399,7 +399,7 @@ register.
 @return 0 on success; exception number on failure
 @ingroup register
 */
-uint8_t ModbusMaster::readInputRegisters(uint16_t u16ReadAddress,
+uint8_t ModbusMasterFP::readInputRegisters(uint16_t u16ReadAddress,
   uint8_t u16ReadQty)
 {
   _u16ReadAddress = u16ReadAddress;
@@ -422,7 +422,7 @@ address of the coil to be forced. Coils are addressed starting at zero.
 @return 0 on success; exception number on failure
 @ingroup discrete
 */
-uint8_t ModbusMaster::writeSingleCoil(uint16_t u16WriteAddress, uint8_t u8State)
+uint8_t ModbusMasterFP::writeSingleCoil(uint16_t u16WriteAddress, uint8_t u8State)
 {
   _u16WriteAddress = u16WriteAddress;
   _u16WriteQty = (u8State ? 0xFF00 : 0x0000);
@@ -442,7 +442,7 @@ written. Registers are addressed starting at zero.
 @return 0 on success; exception number on failure
 @ingroup register
 */
-uint8_t ModbusMaster::writeSingleRegister(uint16_t u16WriteAddress,
+uint8_t ModbusMasterFP::writeSingleRegister(uint16_t u16WriteAddress,
   uint16_t u16WriteValue)
 {
   _u16WriteAddress = u16WriteAddress;
@@ -468,14 +468,14 @@ corresponding output to be ON. A logical '0' requests it to be OFF.
 @return 0 on success; exception number on failure
 @ingroup discrete
 */
-uint8_t ModbusMaster::writeMultipleCoils(uint16_t u16WriteAddress,
+uint8_t ModbusMasterFP::writeMultipleCoils(uint16_t u16WriteAddress,
   uint16_t u16BitQty)
 {
   _u16WriteAddress = u16WriteAddress;
   _u16WriteQty = u16BitQty;
   return ModbusMasterTransaction(ku8MBWriteMultipleCoils);
 }
-uint8_t ModbusMaster::writeMultipleCoils()
+uint8_t ModbusMasterFP::writeMultipleCoils()
 {
   _u16WriteQty = u16TransmitBufferLength;
   return ModbusMasterTransaction(ku8MBWriteMultipleCoils);
@@ -496,7 +496,7 @@ is packed as one word per register.
 @return 0 on success; exception number on failure
 @ingroup register
 */
-uint8_t ModbusMaster::writeMultipleRegisters(uint16_t u16WriteAddress,
+uint8_t ModbusMasterFP::writeMultipleRegisters(uint16_t u16WriteAddress,
   uint16_t u16WriteQty)
 {
   _u16WriteAddress = u16WriteAddress;
@@ -505,7 +505,7 @@ uint8_t ModbusMaster::writeMultipleRegisters(uint16_t u16WriteAddress,
 }
 
 // new version based on Wire.h
-uint8_t ModbusMaster::writeMultipleRegisters()
+uint8_t ModbusMasterFP::writeMultipleRegisters()
 {
   _u16WriteQty = _u8TransmitBufferIndex;
   return ModbusMasterTransaction(ku8MBWriteMultipleRegisters);
@@ -534,7 +534,7 @@ Result = (Current Contents && And_Mask) || (Or_Mask && (~And_Mask))
 @return 0 on success; exception number on failure
 @ingroup register
 */
-uint8_t ModbusMaster::maskWriteRegister(uint16_t u16WriteAddress,
+uint8_t ModbusMasterFP::maskWriteRegister(uint16_t u16WriteAddress,
   uint16_t u16AndMask, uint16_t u16OrMask)
 {
   _u16WriteAddress = u16WriteAddress;
@@ -564,7 +564,7 @@ buffer.
 @return 0 on success; exception number on failure
 @ingroup register
 */
-uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
+uint8_t ModbusMasterFP::readWriteMultipleRegisters(uint16_t u16ReadAddress,
   uint16_t u16ReadQty, uint16_t u16WriteAddress, uint16_t u16WriteQty)
 {
   _u16ReadAddress = u16ReadAddress;
@@ -573,7 +573,7 @@ uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
   _u16WriteQty = u16WriteQty;
   return ModbusMasterTransaction(ku8MBReadWriteMultipleRegisters);
 }
-uint8_t ModbusMaster::readWriteMultipleRegisters(uint16_t u16ReadAddress,
+uint8_t ModbusMasterFP::readWriteMultipleRegisters(uint16_t u16ReadAddress,
   uint16_t u16ReadQty)
 {
   _u16ReadAddress = u16ReadAddress;
@@ -597,7 +597,7 @@ Sequence:
 @param u8MBFunction Modbus function (0x01..0xFF)
 @return 0 on success; exception number on failure
 */
-uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction)
+uint8_t ModbusMasterFP::ModbusMasterTransaction(uint8_t u8MBFunction)
 {
   uint8_t u8ModbusADU[256];
   uint8_t u8ModbusADUSize = 0;
@@ -705,9 +705,9 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction)
   while (_serial->read() != -1);
 
   // transmit request
-  if (_preTransmission)
+  if (preTransmission.attached())
   {
-    _preTransmission();
+    preTransmission(1);
   }
   for (i = 0; i < u8ModbusADUSize; i++)
   {
@@ -716,13 +716,13 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction)
   
   u8ModbusADUSize = 0;
   _serial->flush();    // flush transmit buffer
-  if (_postTransmission)
+  if (postTransmission.attached())
   {
-    _postTransmission();
+    postTransmission(1);
   }
   
   // loop until we run out of time or bytes, or an error occurs
-  u32StartTime = millis();
+  u32StartTime = ((uint32_t)millis());
   while (u8BytesLeft && !u8MBStatus)
   {
     if (_serial->available())
@@ -741,9 +741,9 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction)
 #if __MODBUSMASTER_DEBUG__
       digitalWrite(__MODBUSMASTER_DEBUG_PIN_B__, true);
 #endif
-      if (_idle)
+      if (idle.attached())
       {
-        _idle();
+        idle(1);
       }
 #if __MODBUSMASTER_DEBUG__
       digitalWrite(__MODBUSMASTER_DEBUG_PIN_B__, false);
@@ -797,7 +797,7 @@ uint8_t ModbusMaster::ModbusMasterTransaction(uint8_t u8MBFunction)
           break;
       }
     }
-    if ((millis() - u32StartTime) > ku16MBResponseTimeout)
+    if ((((uint32_t)millis()) - u32StartTime) > ((uint32_t)ku16MBResponseTimeout))
     {
       u8MBStatus = ku8MBResponseTimedOut;
     }
