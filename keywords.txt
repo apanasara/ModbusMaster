@@ -6,7 +6,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 
-ModbusMaster	KEYWORD1
+ModbusMasterFP	KEYWORD1
 
 #######################################
 # Methods and Functions (KEYWORD2)
