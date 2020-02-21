@@ -32,8 +32,8 @@ Arduino library for communicating with Modbus slaves over RS232/485 (via RTU pro
 */
 
   
-#ifndef ModbusMaster_h
-#define ModbusMaster_h
+#ifndef ModbusMasterFP_h
+#define ModbusMasterFP_h
 
 
 /**
@@ -59,23 +59,29 @@ Set to 1 to enable debugging features within class:
 
 // functions to manipulate words
 #include "util/word.h"
-
+#include "util/FP.h"
 
 /* _____CLASS DEFINITIONS____________________________________________________ */
 /**
 Arduino class library for communicating with Modbus slaves over 
 RS232/485 (via RTU protocol).
 */
-class ModbusMaster
+class ModbusMasterFP
 {
   public:
-    ModbusMaster();
+    ModbusMasterFP();
    
     void begin(uint8_t, Stream &serial);
-    void idle(void (*)());
+    
+    FP<void,bool>preTransmission;
+    FP<void,bool>postTransmission;
+    FP<void,bool>idle;
+
+    /*void idle(void (*)());
     void preTransmission(void (*)());
     void postTransmission(void (*)());
-
+    */
+    
     // Modbus exception codes
     /**
     Modbus protocol illegal function exception.
@@ -220,7 +226,7 @@ class ModbusMaster
   private:
     Stream* _serial;                                             ///< reference to serial port object
     uint8_t  _u8MBSlave;                                         ///< Modbus slave (1..255) initialized in begin()
-    static const uint8_t ku8MaxBufferSize                = 64;   ///< size of response/transmit buffers    
+    static const uint8_t ku8MaxBufferSize                = 128;   ///< size of response/transmit buffers    
     uint16_t _u16ReadAddress;                                    ///< slave register from which to read
     uint16_t _u16ReadQty;                                        ///< quantity of words to read
     uint16_t _u16ResponseBuffer[ku8MaxBufferSize];               ///< buffer to store Modbus slave response; read via GetResponseBuffer()
@@ -249,17 +255,19 @@ class ModbusMaster
     static const uint8_t ku8MBReadWriteMultipleRegisters = 0x17; ///< Modbus function 0x17 Read Write Multiple Registers
     
     // Modbus timeout [milliseconds]
-    static const uint16_t ku16MBResponseTimeout          = 2000; ///< Modbus timeout [milliseconds]
+    static const uint16_t ku16MBResponseTimeout          = 1000; ///< Modbus timeout [milliseconds]
     
     // master function that conducts Modbus transactions
     uint8_t ModbusMasterTransaction(uint8_t u8MBFunction);
     
+    /*
     // idle callback function; gets called during idle time between TX and RX
     void (*_idle)();
     // preTransmission callback function; gets called before writing a Modbus message
     void (*_preTransmission)();
     // postTransmission callback function; gets called after a Modbus message has been sent
     void (*_postTransmission)();
+    */
 };
 #endif
 
